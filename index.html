@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <title>Messenger</title>
+</head>
+<body>
+    <h1>Simple Messenger</h1>
+
+    <div id="userLogin">
+        <input type="text" id="UserLoginInput" placeholder="Username">
+        <input type="password" id="UserPasswordInput" placeholder="Password">
+        <button id="loginButton" onclick="login()">Log In</button>
+    </div>
+
+    <div id="userConnection">
+        <p>Connected with: </p>
+        <p id="connectedUser">Other User</p>
+    </div>
+    
+    <div id="messages">
+        <p>Test-Message</p><br>
+        <p>Test-Message</p><br>
+        <p>Test-Message</p><br>
+        <p>Test-Message</p><br>
+        <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. A numquam illo aperiam voluptates facere amet repellat in repellendus aspernatur, placeat cum ullam nostrum eius! Culpa delectus amet obcaecati magni minima!</p>
+        <p>Test-Message</p><br>
+        <p>Test-Message</p><br>
+        <p>Test-Message</p><br>
+        <p>Test-Message</p><br>
+        <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. A numquam illo aperiam voluptates facere amet repellat in repellendus aspernatur, placeat cum ullam nostrum eius! Culpa delectus amet obcaecati magni minima!</p>
+    </div>
+
+    <div id="userInput">
+        <input type="text" id="messageInput" placeholder="Enter your message">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+
+        const URL = 'http://ableytner.ddns.net:27000/'
+        const user_object = {
+            username : null,
+            user_id : null,
+            token : null,
+            other_user_id : null
+        }
+
+        async function getMessages() {
+            
+            fetch(URL + 'user/abi', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Auth-Token': user_object['token']
+                }
+            })
+            .then((response) => response.json())
+            .then((data)=>{
+                console.log(data);
+                user_object['other_user_id'] = data['user_id']
+                return fetch(URL + 'message/'+ data['user_id'].toString(), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Auth-Token': user_object['token']
+                    }
+            })
+            .then((response) => response.json())
+            .then((data)=>{
+                    console.log(data);
+
+                    const messagesContainer = document.getElementById("messages");
+                    const userInputDiv = document.getElementById("userInput")
+
+                    messagesContainer.innerHTML = "";
+
+                    data.messages.forEach(item => {
+                        const messageElement = document.createElement("p");
+                        messageElement.textContent = item.content;
+                        messagesContainer.appendChild(messageElement);
+
+                        const brElement = document.createElement("br");
+                        messagesContainer.appendChild(brElement);
+                    });
+                })
+            })
+            
+            setTimeout(getMessages, 1000);
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById("messageInput");
+            const message = messageInput.value;
+            console.log(message);
+
+            fetch(URL + 'message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Auth-Token': user_object['token']
+                },
+                body: JSON.stringify({
+                    'sender_id': user_object['user_id'],
+                    'receiver_id': user_object['other_user_id'],
+                    'content': message
+                })
+            })
+            .then((request) => request.json())
+            .then((data) => {
+                console.log(data)
+            })
+
+        }
+
+        async function login() {
+            const user = document.getElementById("UserLoginInput");
+            const password = document.getElementById("UserPasswordInput");
+
+            const response = await fetch(URL + 'login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'username': user.value,
+                    'password': password.value
+                })
+            });
+
+            response.json().then((data)=>{
+                console.log(data);
+                user_object['username'] = user.value;
+                user_object['user_id'] = data['user_id'];
+                user_object['token'] = data['token'];
+            })
+
+
+            const successfullLogin = user_object['user_id'] !== null && user_object['token'] !== null;
+
+            if (successfullLogin) {
+                getMessages();
+                showLoggedInState();
+            } else {
+                showErrorMessage();
+            }
+        }
+
+        function showLoggedInState() {
+            const userLoginDiv = document.getElementById("userLogin");
+
+            const successMessage = document.createElement("p");
+            const loggedUser = document.createElement("p");
+            const logOffButton = document.createElement("button");
+            successMessage.textContent = "Logged in as: ";
+            loggedUser.textContent = user_object['username'];
+            logOffButton.textContent = "Log Off";
+            logOffButton.style.margin = "5px";
+
+            logOffButton.addEventListener("click", function () {
+                resetContentToDefault();
+            });
+
+            userLoginDiv.innerHTML = '';
+            userLoginDiv.appendChild(successMessage);
+            userLoginDiv.appendChild(loggedUser);
+            userLoginDiv.appendChild(logOffButton);
+
+            successMessage.style.display = "inline-block";
+            loggedUser.style.display = "inline-block";
+            logOffButton.style.display = "inline-block";
+            document.getElementById("UserLoginInput").style.display = "none";
+            document.getElementById("UserPasswordInput").style.display = "none";
+            document.getElementById("loginButton").style.display = "none";
+        }
+
+        function showErrorMessage() {
+            const errorMessage = document.createElement("p");
+            errorMessage.textContent = "Error while logging in!";
+            errorMessage.style.display = "inline-block";
+        }
+
+        function resetContentToDefault() {
+            const userLoginDiv = document.getElementById("userLogin");
+
+            userLoginDiv.innerHTML = '';
+
+            const loginInput = document.createElement("input");
+            loginInput.type = "text";
+            loginInput.id = "UserLoginInput";
+            loginInput.placeholder = "Username";
+
+            const passwordInput = document.createElement("input");
+            passwordInput.type = "password";
+            passwordInput.id = "UserPasswordInput";
+            passwordInput.placeholder = "Password";
+
+            const loginButton = document.createElement("button");
+            loginButton.textContent = "Log In";
+            loginButton.onclick = login;
+
+            userLoginDiv.appendChild(loginInput);
+            userLoginDiv.appendChild(passwordInput);
+            userLoginDiv.appendChild(loginButton);
+        }
+
+        //document.addEventListener("DOMContentLoaded", getMessages);
+    </script>
+
+</body>
+</html>
